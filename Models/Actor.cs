@@ -25,6 +25,6 @@ namespace Fall2025_Project3_mbaizhakyp.Models
 
         // This will store the image file's bytes
         public byte[]? Photo { get; set; }
-        public ICollection<ActorMovie>? ActorMovies { get; set; }
+        public ICollection<ActorMovie> ActorMovies { get; set; } = new List<ActorMovie>();
     }
 }

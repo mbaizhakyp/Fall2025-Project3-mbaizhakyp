@@ -7,16 +7,22 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using Fall2025_Project3_mbaizhakyp.Data;
 using Fall2025_Project3_mbaizhakyp.Models;
+using Fall2025_Project3_mbaizhakyp.Services;
+using Fall2025_Project3_mbaizhakyp.Models.ViewModels;
+using VaderSharp2;
 
 namespace Fall2025_Project3_mbaizhakyp.Controllers
 {
     public class MoviesController : Controller
     {
         private readonly ApplicationDbContext _context;
+        private readonly OpenAIService _openAIService; // <-- ADDED
 
-        public MoviesController(ApplicationDbContext context)
+        // --- CONSTRUCTOR UPDATED ---
+        public MoviesController(ApplicationDbContext context, OpenAIService openAIService)
         {
             _context = context;
+            _openAIService = openAIService; // <-- ADDED
         }
 
         // GET: Movies
@@ -25,6 +31,7 @@ namespace Fall2025_Project3_mbaizhakyp.Controllers
             return View(await _context.Movies.ToListAsync());
         }
 
+        // --- DETAILS (GET) METHOD FULLY REPLACED ---
         // GET: Movies/Details/5
         public async Task<IActionResult> Details(int? id)
         {
@@ -33,14 +40,69 @@ namespace Fall2025_Project3_mbaizhakyp.Controllers
                 return NotFound();
             }
 
+            // 1. Get the movie and its related actors (for the bonus)
             var movie = await _context.Movies
+                .Include(m => m.ActorMovies)
+                .ThenInclude(am => am.Actor)
                 .FirstOrDefaultAsync(m => m.Id == id);
+
             if (movie == null)
             {
                 return NotFound();
             }
 
-            return View(movie);
+            // 2. Create the ViewModel
+            var viewModel = new MovieDetailViewModel
+            {
+                Movie = movie,
+                Actors = movie.ActorMovies?.Select(am => am.Actor).ToList() ?? new List<Actor>()
+            };
+
+            // 3. Call AI for 10 reviews
+            string prompt = $"Generate 10 brief, unique reviews for the movie '{movie.Title}'. Each review should be on a new line and start with a number (e.g., '1. ...').";
+            string aiResponse = await _openAIService.GetChatCompletionAsync(prompt);
+
+            // 4. Parse response and run Sentiment Analysis
+            var analyzer = new SentimentIntensityAnalyzer();
+            var reviews = aiResponse.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            
+            double totalSentiment = 0;
+            int reviewCount = 0;
+
+            foreach (var reviewText in reviews)
+            {
+                // Clean up the text (e.g., remove "1. ")
+                var cleanText = reviewText.Length > 3 ? reviewText.Substring(3) : reviewText;
+                
+                var sentiment = analyzer.PolarityScores(cleanText);
+                
+                viewModel.Reviews.Add(new ReviewSentimentViewModel
+                {
+                    ReviewText = cleanText,
+                    SentimentScore = sentiment.Compound
+                });
+
+                totalSentiment += sentiment.Compound;
+                reviewCount++;
+            }
+
+            // 5. Calculate and format average sentiment
+            if (reviewCount > 0)
+            {
+                double avgSentiment = totalSentiment / reviewCount;
+                if (avgSentiment > 0.05)
+                    viewModel.OverallSentiment = $"Positive (Score: {avgSentiment:F2})";
+                else if (avgSentiment < -0.05)
+                    viewModel.OverallSentiment = $"Negative (Score: {avgSentiment:F2})";
+                else
+                    viewModel.OverallSentiment = $"Neutral (Score: {avgSentiment:F2})";
+            }
+            else
+            {
+                viewModel.OverallSentiment = "Could not be determined.";
+            }
+            
+            return View(viewModel);
         }
 
         // GET: Movies/Create
@@ -52,10 +114,8 @@ namespace Fall2025_Project3_mbaizhakyp.Controllers
         // POST: Movies/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
-        // UPDATED: Added IFormFile? posterFile, removed Poster from [Bind]
         public async Task<IActionResult> Create([Bind("Id,Title,IMDBHyperlink,Genre,YearOfRelease")] Movie movie, IFormFile? posterFile)
         {
-            // UPDATED: Added this block to handle the file upload
             if (posterFile != null && posterFile.Length > 0)
             {
                 using (var memoryStream = new MemoryStream())
@@ -91,40 +151,30 @@ namespace Fall2025_Project3_mbaizhakyp.Controllers
         }
 
         // POST: Movies/Edit/5
-        // UPDATED: This entire method is replaced to fix the 405 error
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int id, IFormFile? posterFile)
         {   
-            
-            // 1. Fetch the existing movie from the database
             var movieToUpdate = await _context.Movies.FirstOrDefaultAsync(m => m.Id == id);
-
             
             if (movieToUpdate == null)
             {
                 return NotFound();
             }
 
-            // 2. Try to update its properties from the form
             if (await TryUpdateModelAsync(movieToUpdate, "",
                 m => m.Title, m => m.IMDBHyperlink, m => m.Genre, m => m.YearOfRelease))
             {
-                // 3. Handle the file upload
                 if (posterFile != null && posterFile.Length > 0)
                 {
                     using (var memoryStream = new MemoryStream())
                     {
                         await posterFile.CopyToAsync(memoryStream);
                         movieToUpdate.Poster = memoryStream.ToArray();
-                        
-                        // --- THIS IS THE UPDATED LINE ---
-                        // Force EF to recognize the Poster has changed
                         _context.Entry(movieToUpdate).Property(x => x.Poster).IsModified = true;
                     }
                 }
 
-                // 4. Save changes
                 try
                 {
                     await _context.SaveChangesAsync();
@@ -143,7 +193,6 @@ namespace Fall2025_Project3_mbaizhakyp.Controllers
                 return RedirectToAction(nameof(Index));
             }
             
-            // If TryUpdateModelAsync fails, return to the Edit view
             return View(movieToUpdate);
         }
 

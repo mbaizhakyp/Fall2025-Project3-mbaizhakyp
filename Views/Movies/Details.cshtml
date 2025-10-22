@@ -1,49 +1,42 @@
-@model Fall2025_Project3_mbaizhakyp.Models.Movie
+@model Fall2025_Project3_mbaizhakyp.Models.ViewModels.MovieDetailViewModel
 
 @{
     ViewData["Title"] = "Details";
 }
 
-<h1>Details</h1>
+<h1>@Model.Movie.Title</h1>
 
 <div>
-    <h4>Movie</h4>
+    <h4>Movie Details</h4>
     <hr />
     <dl class="row">
         <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Title)
+            @Html.DisplayNameFor(model => model.Movie.IMDBHyperlink)
         </dt>
         <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Title)
+            <a href="@Model.Movie.IMDBHyperlink" target="_blank">@Model.Movie.IMDBHyperlink</a>
         </dd>
         <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.IMDBHyperlink)
+            @Html.DisplayNameFor(model => model.Movie.Genre)
         </dt>
         <dd class = "col-sm-10">
-            <a href="@Model.IMDBHyperlink" target="_blank">@Model.IMDBHyperlink</a>
+            @Html.DisplayFor(model => model.Movie.Genre)
         </dd>
         <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Genre)
+            @Html.DisplayNameFor(model => model.Movie.YearOfRelease)
         </dt>
         <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Genre)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.YearOfRelease)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.YearOfRelease)
+            @Html.DisplayFor(model => model.Movie.YearOfRelease)
         </dd>
         
-        @if (Model.Poster != null && Model.Poster.Length > 0)
+        @if (Model.Movie.Poster != null && Model.Movie.Poster.Length > 0)
         {
             <dt class="col-sm-2">
-                @Html.DisplayNameFor(model => model.Poster)
+                @Html.DisplayNameFor(model => model.Movie.Poster)
             </dt>
             <dd class="col-sm-10">
                 @{
-                    // Convert the byte[] to a Base64 string to use in an <img> tag
-                    var base64String = Convert.ToBase64String(Model.Poster);
+                    var base64String = Convert.ToBase64String(Model.Movie.Poster);
                     var imgSrc = $"data:image/*;base64,{base64String}";
                 }
                 <img src="@imgSrc" style="max-width: 400px;" alt="Movie Poster" />
@@ -51,7 +44,50 @@
         }
     </dl>
 </div>
+
+<hr />
+<h4>Actors in this Movie</h4>
+@if (Model.Actors.Any())
+{
+    <ul>
+        @foreach (var actor in Model.Actors)
+        {
+            <li>
+                <a asp-controller="Actors" asp-action="Details" asp-route-id="@actor.Id">@actor.Name</a>
+            </li>
+        }
+    </ul>
+}
+else
+{
+    <p>No actors have been linked to this movie yet.</p>
+}
+
+
+<hr />
+<h4>AI-Generated Reviews</h4>
+<h5>Overall Sentiment: @Model.OverallSentiment</h5>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Review</th>
+            <th>Sentiment Score (Compound)</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var review in Model.Reviews)
+        {
+            <tr>
+                <td>@review.ReviewText</td>
+                <td>@review.SentimentScore.ToString("F2")</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<br />
 <div>
-    <a asp-action="Edit" asp-route-id="@Model?.Id">Edit</a> |
+    <a asp-action="Edit" asp-route-id="@Model.Movie.Id">Edit</a> |
     <a asp-action="Index">Back to List</a>
 </div>
