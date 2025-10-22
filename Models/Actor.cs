@@ -9,10 +9,11 @@ namespace Fall2025_Project3_mbaizhakyp.Models
 
         [Required]
         [StringLength(100)]
-        public string Name { get; set; }
+        public string Name { get; set; } = string.Empty;
 
         [Required]
-        public string Gender { get; set; }
+        public string Gender { get; set; } = string.Empty;
+
 
         [Required]
         public int Age { get; set; }
@@ -20,7 +21,7 @@ namespace Fall2025_Project3_mbaizhakyp.Models
         [Required]
         [Display(Name = "IMDB Link")]
         [Url]
-        public string IMDBHyperlink { get; set; }
+        public string IMDBHyperlink { get; set; } = string.Empty;
 
         // This will store the image file's bytes
         public byte[]? Photo { get; set; }

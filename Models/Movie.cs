@@ -9,15 +9,18 @@ namespace Fall2025_Project3_mbaizhakyp.Models
 
         [Required]
         [StringLength(100)]
-        public string Title { get; set; }
+        // To this:
+        public string Title { get; set; } = string.Empty;
+
 
         [Required]
         [Display(Name = "IMDB Link")]
         [Url]
-        public string IMDBHyperlink { get; set; }
+        public string IMDBHyperlink { get; set; } = string.Empty;
 
         [Required]
-        public string Genre { get; set; }
+        public string Genre { get; set; } = string.Empty;
+
 
         [Required]
         [Display(Name = "Year of Release")]
