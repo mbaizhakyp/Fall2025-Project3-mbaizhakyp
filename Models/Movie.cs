@@ -25,5 +25,6 @@ namespace Fall2025_Project3_mbaizhakyp.Models
 
         // This will store the image file's bytes directly in the database
         public byte[]? Poster { get; set; }
+        public ICollection<ActorMovie>? ActorMovies { get; set; }
     }
 }
